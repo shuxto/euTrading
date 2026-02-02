@@ -20,7 +20,7 @@ import { useMarketData } from './hooks/useMarketData'
 import { type Order, type ActiveAsset, type ChartStyle, type TradingAccount } from './types'
 
 // ⚠️ GLOBAL SOCKET URL
-const RAILWAY_URL = "https://trading-production-169d.up.railway.app"; 
+const RAILWAY_URL = "https://trading-copy-production.up.railway.app"; 
 
 // ✅ DEFAULT ASSET FALLBACK (Now with type!)
 const DEFAULT_ASSET: ActiveAsset & { type: string } = { 

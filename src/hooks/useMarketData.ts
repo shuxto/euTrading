@@ -5,7 +5,7 @@ import { io } from "socket.io-client"; // 👈 New Import
 import type { CandleData, ActiveAsset } from '../types';
 
 // ⚠️ STEP 5: Railway URL here later
-const RAILWAY_URL = "https://trading-production-169d.up.railway.app"; 
+const RAILWAY_URL = "https://trading-copy-production.up.railway.app"; 
 
 export function useMarketData(asset: ActiveAsset, interval: string) {
   const [candles, setCandles] = useState<CandleData[]>([]);
