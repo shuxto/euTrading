@@ -10,7 +10,8 @@ import {
   ShieldCheck,
   CreditCard,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Zap // 🟢 ADDED: Icon for the button
 } from 'lucide-react';
 
 // COMPONENTS
@@ -101,6 +102,44 @@ export default function AdminPanel({ onLogout }: AdminPanelProps) {
         totalVolume: volume
       });
     }
+  };
+
+  // --- 🟢 NEW: AUTO-CREATE & LAUNCH TRADING FLOOR ---
+  const handleLaunchTrading = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // 1. CHECK: Does this staff member ALREADY have an account?
+      const { data: accounts } = await supabase
+          .from('trading_accounts')
+          .select('id')
+          .eq('user_id', user.id)
+          .limit(1);
+
+      if (accounts && accounts.length > 0) {
+          // A. YES -> Go to existing account
+          window.location.href = `?mode=trading&account_id=${accounts[0].id}`;
+      } else {
+          // B. NO -> Create ONE account safely (as DEMO)
+          if (confirm("Initialize your Personal Staff Trading Account?")) {
+              const { data, error } = await supabase
+                  .from('trading_accounts')
+                  .insert({ 
+                      user_id: user.id, 
+                      name: 'Staff Trading Account', 
+                      balance: 10000, // Starter money for testing
+                      is_demo: true // 🟢 MARK AS FAKE MONEY
+                  })
+                  .select()
+                  .single();
+              
+              if (data) {
+                  window.location.href = `?mode=trading&account_id=${data.id}`;
+              } else {
+                  alert("Failed to create account: " + (error?.message || "Unknown error"));
+              }
+          }
+      }
   };
 
   const confirmAction = (title: string, desc: string, type: 'warning' | 'danger' | 'success', action: () => Promise<void>) => {
@@ -237,6 +276,27 @@ export default function AdminPanel({ onLogout }: AdminPanelProps) {
                 )}
              </button>
           ))}
+
+          {/* 🟢 NEW: TRADING FLOOR BUTTON */}
+          <div className="pt-4 mt-4 border-t border-[#2a2e39]">
+              <button 
+                onClick={handleLaunchTrading}
+                className={`w-full flex items-center transition-all capitalize rounded-xl group relative text-[#F0B90B] hover:bg-[#F0B90B]/10 hover:text-white
+                    ${isSidebarCollapsed ? 'justify-center py-3 px-0' : 'gap-3 px-4 py-3'}
+                `}
+                title={isSidebarCollapsed ? "Trading Floor" : ''}
+              >
+                  <div className="p-1 rounded bg-[#F0B90B]/10"><Zap size={20} /></div>
+                  
+                  {!isSidebarCollapsed && <span className="font-bold tracking-wide">Trading Floor</span>}
+
+                  {isSidebarCollapsed && (
+                    <div className="absolute left-full ml-2 px-2 py-1 bg-black border border-[#F0B90B]/30 text-[#F0B90B] text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 uppercase font-bold tracking-wider pointer-events-none">
+                        Trading Floor
+                    </div>
+                  )}
+              </button>
+          </div>
         </nav>
 
         <div className="p-3 border-t border-[#2a2e39]">

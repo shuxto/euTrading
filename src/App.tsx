@@ -497,8 +497,12 @@ export default function App() {
   // --- 5. RENDER ---
 
   if (authLoading) return <div className="h-screen bg-[#0b0e11] flex items-center justify-center text-[#21ce99] font-bold">Loading...</div>;
-  if (!session) return <LoginPage />;
-  if (role === 'admin') return <AdminPanel onLogout={() => supabase.auth.signOut()} />;
+  if (!session) return <LoginPage onLogin={() => {}} />;
+  
+  // 🟢 FIX: Allow Admin to access Trading Mode
+  if (role === 'admin' && currentView !== 'trading') {
+      return <AdminPanel onLogout={() => supabase.auth.signOut()} />;
+  }
 
   if (currentView === 'portal') {
     return <ClientDashboard userEmail={session.user.email} onLogout={() => supabase.auth.signOut()} />;
