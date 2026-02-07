@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { User, ChevronDown, LayoutGrid, Briefcase, Check, TrendingUp, Wallet } from 'lucide-react';
+import { User, ChevronDown, LayoutGrid, Briefcase, Check, TrendingUp, Wallet, ShieldAlert } from 'lucide-react';
 import { useClickSound } from '../hooks/useClickSound';
 
 interface HeaderProps {
@@ -10,7 +10,9 @@ interface HeaderProps {
   }; 
   balance: number; 
   activeAccountName?: string;
-  userAccounts: any[]; // ✅ Prop received from App.tsx
+  userAccounts: any[];
+  isGodMode?: boolean;
+  monitoredUserName?: string;
   onOpenAssetSelector: () => void;
   onOpenDashboardPopup: () => void; 
   onOpenProfilePage: () => void;    
@@ -20,7 +22,9 @@ export default function Header({
   activeAsset, 
   balance, 
   activeAccountName, 
-  userAccounts, // ✅ Destructured here
+  userAccounts,
+  isGodMode = false,
+  monitoredUserName = '',
   onOpenAssetSelector, 
   onOpenDashboardPopup, 
   onOpenProfilePage 
@@ -30,19 +34,27 @@ export default function Header({
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
 
   return (
-    <header className="h-14 md:h-16 border-b border-[#21ce99]/20 flex items-center justify-between px-4 md:px-6 bg-[#151a21]/95 backdrop-blur-md z-50 relative shadow-[0_4px_20px_rgba(0,0,0,0.5)] font-sans">
+    <header className={`h-14 md:h-16 border-b flex items-center justify-between px-4 md:px-6 backdrop-blur-md z-50 relative shadow-[0_4px_20px_rgba(0,0,0,0.5)] font-sans transition-colors duration-300 ${
+      isGodMode 
+        ? 'bg-red-950/90 border-red-500/30' 
+        : 'bg-[#151a21]/95 border-[#21ce99]/20'
+    }`}>
       
       {/* 1. LEFT SIDE: LOGO & SELECTORS */}
       <div className="flex items-center gap-4 md:gap-8">
         
         {/* LOGO */}
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#21ce99] to-emerald-600 flex items-center justify-center shadow-[0_0_15px_rgba(33,206,153,0.4)] border border-white/10">
-            <TrendingUp size={18} className="text-[#0b0e11]" strokeWidth={3} />
+          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(33,206,153,0.4)] border border-white/10 ${isGodMode ? 'bg-red-600' : 'bg-gradient-to-br from-[#21ce99] to-emerald-600'}`}>
+            {isGodMode ? <ShieldAlert size={18} className="text-white" /> : <TrendingUp size={18} className="text-[#0b0e11]" strokeWidth={3} />}
           </div>
           <div className="hidden md:flex flex-col leading-none">
             <span className="font-black text-sm tracking-[0.2em] text-white">VOIDNET</span>
-            <span className="text-[9px] font-bold text-[#21ce99] tracking-widest uppercase">Terminal v7.4</span>
+            {isGodMode ? (
+               <span className="text-[9px] font-bold text-red-500 tracking-widest uppercase animate-pulse">GOD MODE</span>
+            ) : (
+               <span className="text-[9px] font-bold text-[#21ce99] tracking-widest uppercase">Terminal v7.4</span>
+            )}
           </div>
         </div>
 
@@ -61,7 +73,7 @@ export default function Header({
               <ChevronDown size={14} className="text-[#5e6673] group-hover:text-[#21ce99] transition-colors" />
             </button>
 
-            {/* ✅ ACCOUNT SWITCHER DROPDOWN */}
+            {/* ✅ RESTORED: ACCOUNT SWITCHER (ALWAYS VISIBLE NOW) */}
             {activeAccountName && (
                 <div className="relative">
                     <button 
@@ -84,7 +96,7 @@ export default function Header({
                         </div>
                     </button>
 
-                    {/* 🟢 FLOATING MENU */}
+                    {/* DROPDOWN MENU */}
                     {isAccountMenuOpen && (
                         <>
                             <div className="fixed inset-0 z-10" onClick={() => setIsAccountMenuOpen(false)}></div>
@@ -93,29 +105,29 @@ export default function Header({
                                     <span className="text-[9px] font-bold text-[#21ce99] uppercase tracking-widest">Select Room</span>
                                     <span className="text-[9px] font-bold text-[#5e6673]">{userAccounts?.length || 0} UNITS</span>
                                 </div>
-                                
                                 <div className="max-h-60 overflow-y-auto custom-scrollbar p-1">
-                                    {userAccounts && userAccounts.length > 0 ? (
-                                        userAccounts.map((acc) => (
-                                            <button
-                                                key={acc.id}
-                                                onClick={() => {
-                                                    playClick();
-                                                    window.location.href = `?mode=trading&account_id=${acc.id}`;
-                                                    setIsAccountMenuOpen(false);
-                                                }}
-                                                className="w-full flex items-center justify-between px-3 py-3 hover:bg-[#21ce99]/10 rounded-lg transition-all text-left group border border-transparent hover:border-[#21ce99]/20 mb-1"
-                                            >
-                                                <div className="flex flex-col">
-                                                    <span className={`text-xs font-bold uppercase tracking-wide ${activeAccountName === acc.name ? 'text-white' : 'text-gray-400 group-hover:text-white'}`}>{acc.name}</span>
-                                                    <span className="text-[10px] text-[#5e6673] font-mono group-hover:text-[#21ce99] transition-colors">${acc.balance.toLocaleString()}</span>
-                                                </div>
-                                                {activeAccountName === acc.name && <div className="bg-[#21ce99] p-1 rounded-full text-[#0b0e11]"><Check size={10} strokeWidth={4} /></div>}
-                                            </button>
-                                        ))
-                                    ) : (
-                                        <div className="px-3 py-6 text-center text-gray-500 text-[10px] font-mono uppercase">No active units found</div>
-                                    )}
+                                    {userAccounts?.map((acc) => (
+                                        <button
+                                            key={acc.id}
+                                            onClick={() => {
+                                                playClick();
+                                                // Keep the God Mode param if it exists!
+                                                const currentUrl = new URL(window.location.href);
+                                                currentUrl.searchParams.set('mode', 'trading');
+                                                currentUrl.searchParams.set('account_id', acc.id);
+                                                window.location.href = currentUrl.toString();
+                                                
+                                                setIsAccountMenuOpen(false);
+                                            }}
+                                            className="w-full flex items-center justify-between px-3 py-3 hover:bg-[#21ce99]/10 rounded-lg transition-all text-left group border border-transparent hover:border-[#21ce99]/20 mb-1"
+                                        >
+                                            <div className="flex flex-col">
+                                                <span className={`text-xs font-bold uppercase tracking-wide ${activeAccountName === acc.name ? 'text-white' : 'text-gray-400 group-hover:text-white'}`}>{acc.name}</span>
+                                                <span className="text-[10px] text-[#5e6673] font-mono group-hover:text-[#21ce99] transition-colors">${acc.balance.toLocaleString()}</span>
+                                            </div>
+                                            {activeAccountName === acc.name && <div className="bg-[#21ce99] p-1 rounded-full text-[#0b0e11]"><Check size={10} strokeWidth={4} /></div>}
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
                         </>
@@ -128,6 +140,19 @@ export default function Header({
       {/* 2. RIGHT SIDE: BALANCE & TOOLS */}
       <div className="flex items-center gap-3 md:gap-4">
         
+        {/* 🔴 MOVED HERE: CLIENT NAME DISPLAY */}
+        {isGodMode && (
+            <div className="hidden lg:flex items-center gap-3 border border-red-500/50 bg-red-500/10 rounded-xl px-3 py-1.5 shadow-[0_0_15px_rgba(239,68,68,0.2)] mr-2">
+                <div className="p-1.5 rounded-lg bg-red-500 text-white">
+                    <User size={14} />
+                </div>
+                <div className="flex flex-col items-start text-left">
+                    <span className="text-[8px] text-red-400 font-bold uppercase tracking-wider leading-none mb-0.5">Managing Client</span>
+                    <span className="text-xs font-black text-white leading-none uppercase tracking-wide">{monitoredUserName}</span>
+                </div>
+            </div>
+        )}
+
         {/* BALANCE DISPLAY */}
         <div className="bg-[#0b0e11] pl-3 pr-4 py-1.5 rounded-xl border border-white/10 shadow-inner flex items-center gap-3 group hover:border-[#21ce99]/30 transition-colors">
           <div className="w-8 h-8 rounded-lg bg-[#1e232d] flex items-center justify-center text-[#21ce99] group-hover:scale-110 transition-transform">

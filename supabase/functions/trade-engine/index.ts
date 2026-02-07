@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
     // ACTION: OPEN TRADE
     // ============================================================
     if (action === 'open') {
-      const { symbol, type, size, leverage, account_id, stop_loss, take_profit } = payload;
+      const { symbol, type, size, leverage, account_id, stop_loss, take_profit, is_god_mode } = payload;
 
       // 1. Fetch Real Price from TwelveData
       const priceRes = await fetch(`${TWELVE_DATA_API}?symbol=${symbol}&apikey=${apiKey}`);
@@ -73,8 +73,9 @@ Deno.serve(async (req) => {
           ? realPrice * (1 - (1/leverage) + 0.005) 
           : realPrice * (1 + (1/leverage) - 0.005);
 
+      // Save 'is_god_mode' to database (defaulting to false)
       const { data: trade, error } = await supabase.from('trades').insert([{
-        user_id: user.id,
+        user_id: user.id, // Note: This saves the Creator (Staff), but that's okay now because of the fix below
         account_id,
         symbol,
         type,
@@ -85,7 +86,8 @@ Deno.serve(async (req) => {
         status: 'open',
         stop_loss,
         take_profit,
-        liquidation_price: liquidationPrice
+        liquidation_price: liquidationPrice,
+        is_god_mode: is_god_mode || false 
       }]).select().single();
 
       if (error) throw error;
@@ -101,11 +103,44 @@ Deno.serve(async (req) => {
 
       const { data: trade } = await supabase.from('trades').select('*').eq('id', trade_id).single();
       
-      if (!trade || trade.user_id !== user.id || trade.status !== 'open') {
-        return new Response(JSON.stringify({ error: 'Invalid Trade' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      // 1. Basic Validation (Is it open?)
+      if (!trade || trade.status !== 'open') {
+        return new Response(JSON.stringify({ error: 'Trade invalid or already closed' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
-      // 1. Fetch Exit Price
+      // 🟢 CRITICAL FIX HERE: Determine who owns the ACCOUNT, not just who clicked the button
+      const { data: tradeAccount } = await supabase
+          .from('trading_accounts')
+          .select('user_id, balance')
+          .eq('id', trade.account_id)
+          .single();
+
+      if (!tradeAccount) {
+         return new Response(JSON.stringify({ error: 'Trading Account not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      // ---------------------------------------------------------
+      // A. Check if the User is Staff or Admin
+      const { data: userProfile } = await supabase
+          .from('profiles')
+          .select('role, tier') 
+          .eq('id', user.id)
+          .single();
+      
+      // Admin (You) OR Staff
+      const isStaff = userProfile?.tier === 'Staff' || userProfile?.role === 'admin';
+
+      // B. APPLY RULES (Only if NOT Staff)
+      if (!isStaff) {
+          // FIX: Check if the logged-in user owns the TRADING ACCOUNT
+          // If I own the wallet, I can close the trade, even if Staff opened it.
+          if (tradeAccount.user_id !== user.id) {
+             return new Response(JSON.stringify({ error: 'Unauthorized: You do not own this trading account' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          }
+      }
+      // ---------------------------------------------------------
+
+      // 3. Fetch Exit Price
       const priceRes = await fetch(`${TWELVE_DATA_API}?symbol=${trade.symbol}&apikey=${apiKey}`);
       const priceData = await priceRes.json();
       
@@ -121,18 +156,11 @@ Deno.serve(async (req) => {
 
       const returnAmount = trade.margin + pnl;
 
-      const { data: account } = await supabase
+      // Update Balance (We already fetched tradeAccount above)
+      await supabase
         .from('trading_accounts')
-        .select('balance')
-        .eq('id', trade.account_id)
-        .single();
-
-      if (account) {
-        await supabase
-          .from('trading_accounts')
-          .update({ balance: account.balance + returnAmount })
-          .eq('id', trade.account_id);
-      }
+        .update({ balance: tradeAccount.balance + returnAmount })
+        .eq('id', trade.account_id);
       
       await supabase.from('trades').update({ 
         status: 'closed', 

@@ -37,6 +37,10 @@ export default function App() {
   const [tier, setTier] = useState<string>('Basic');
   const [authLoading, setAuthLoading] = useState(true);
 
+// GOD MODE STATE
+  const [isGodMode, setIsGodMode] = useState(false);
+  const [monitoredUserName, setMonitoredUserName] = useState<string>('');
+
   // VIEW STATE
   const [currentView, setCurrentView] = useState<'portal' | 'trading'>('portal');
   const [activeAccount, setActiveAccount] = useState<TradingAccount | null>(null);
@@ -107,8 +111,8 @@ export default function App() {
       setSession(session);
       if (session) {
         checkUser(session.user.id);
-        checkUrlParams(session.user.id);
-        fetchUserAccounts(session.user.id); 
+        // ✅ ONLY call this. It decides if we load God Mode OR You.
+        checkUrlParams(session.user.id); 
       } else {
         setAuthLoading(false);
       }
@@ -118,7 +122,8 @@ export default function App() {
       setSession(session);
       if (session) {
         checkUser(session.user.id);
-        fetchUserAccounts(session.user.id); 
+        // ✅ Same here. No forced fetchUserAccounts.
+        checkUrlParams(session.user.id);
       } else {
         setRole(null);
         setAuthLoading(false);
@@ -136,20 +141,65 @@ export default function App() {
     if (data) setUserAccounts(data);
   };
 
-  const checkUrlParams = async (userId: string) => {
+  const checkUrlParams = async (currentUserId: string) => {
     const params = new URLSearchParams(window.location.search);
     const mode = params.get('mode');
-    const accountId = params.get('account_id');
+    const accountId = params.get('account_id'); // 👈 We will use this now
+    const monitorUserId = params.get('monitor_user_id'); 
+
+    // --- GOD MODE LOGIC ---
+    if (monitorUserId) {
+        console.log("🔒 Attempting God Mode entry for:", monitorUserId);
+        
+        // 1. Fetch Accounts
+        const { data: targetAccounts, error } = await supabase
+            .from('trading_accounts')
+            .select('*')
+            .eq('user_id', monitorUserId);
+            
+        // 2. Fetch Real Name from Profiles
+        const { data: profileData } = await supabase
+            .from('profiles')
+            .select('real_name')
+            .eq('id', monitorUserId)
+            .single();
+
+        if (error) console.error("God Mode Error:", error);
+
+        if (targetAccounts && targetAccounts.length > 0) {
+            // 🟢 THE FIX IS HERE: 
+            // Look for the account ID from the URL. If found, use it. Otherwise default to [0].
+            const targetAccount = targetAccounts.find(acc => acc.id === accountId) || targetAccounts[0];
+            
+            setActiveAccount(targetAccount);
+            setAccountBalance(targetAccount.balance || 0);
+            setUserAccounts(targetAccounts);
+            setIsGodMode(true);
+            
+            setMonitoredUserName(profileData?.real_name || "Unknown Client");
+            
+            setCurrentView('trading');
+            return; 
+        } else {
+            console.warn("God Mode Access Denied");
+        }
+    }
+
+    // --- NORMAL LOGIC ---
+    fetchUserAccounts(currentUserId);
 
     if (mode === 'trading' && accountId) {
        const { data } = await supabase
           .from('trading_accounts')
           .select('*')
           .eq('id', accountId)
-          .eq('user_id', userId)
-          .single();
+          .single(); 
        
        if (data) {
+          if (data.user_id !== currentUserId) {
+             setIsGodMode(true);
+             setMonitoredUserName("Client Account");
+          }
           setActiveAccount(data);
           setAccountBalance(data.balance || 0); 
           setCurrentView('trading');
@@ -509,7 +559,9 @@ export default function App() {
   }
 
   return (
+    // 🟢 REMOVED RED BORDER CLASS AND BANNER
     <div className="h-screen w-screen bg-gradient-to-b from-[#191f2e] to-[#2e3851] text-white flex flex-col overflow-hidden fixed inset-0 font-sans selection:bg-[#F07000] selection:text-white">
+      
       <AssetSelector isOpen={isAssetSelectorOpen} onClose={() => setIsAssetSelectorOpen(false)} onSelect={setActiveAsset} />
       <PremiumModal isOpen={isPremiumModalOpen} onClose={() => setIsPremiumModalOpen(false)} />
       <WorldMap />
@@ -519,16 +571,20 @@ export default function App() {
         balance={accountBalance} 
         activeAccountName={activeAccount?.name}
         userAccounts={userAccounts} 
+        isGodMode={isGodMode}
+        monitoredUserName={monitoredUserName}
         onOpenAssetSelector={() => setIsAssetSelectorOpen(true)} 
         onOpenDashboardPopup={() => {
             window.history.pushState({}, '', window.location.origin);
             setCurrentView('portal');
             setActiveAccount(null);
+            setIsGodMode(false); // ✅ Exit God Mode
         }} 
         onOpenProfilePage={() => {
             window.history.pushState({}, '', window.location.origin);
             setCurrentView('portal');
             setActiveAccount(null);
+            setIsGodMode(false); // ✅ Exit God Mode
         }}
       />
       
