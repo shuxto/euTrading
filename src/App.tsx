@@ -17,6 +17,7 @@ import AssetSelector from './components/AssetSelector'
 import PremiumModal from './components/PremiumModal'
 import PositionsPanel from './components/PositionsPanel' 
 import { useMarketData } from './hooks/useMarketData' 
+import SupportChatWidget from './components/dashboard/SupportChatWidget'
 import { type Order, type ActiveAsset, type ChartStyle, type TradingAccount } from './types'
 
 // ⚠️ GLOBAL SOCKET URL
@@ -555,7 +556,12 @@ export default function App() {
   }
 
   if (currentView === 'portal') {
-    return <ClientDashboard userEmail={session.user.email} onLogout={() => supabase.auth.signOut()} />;
+    return (
+      <>
+        <ClientDashboard userEmail={session.user.email} onLogout={() => supabase.auth.signOut()} />
+        {session?.user && <SupportChatWidget userId={session.user.id} />}
+      </>
+    );
   }
 
   return (
@@ -629,6 +635,8 @@ export default function App() {
         onCloseOrder={handleCloseOrder} 
         lastOrderTime={lastOrderTime} 
       />
+      {/* Support Chat Widget */}
+      {session?.user && <SupportChatWidget userId={session.user.id} />}
     </div>
   )
 }

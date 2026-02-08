@@ -3,15 +3,16 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-"scripts": {
+  "scripts": {
     "dev": "vite",
-    "start": "node scripts/broadcaster.js",  
+    "start": "node scripts/broadcaster.js",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.90.0",
+    "emoji-picker-react": "^4.18.0",
     "lightweight-charts": "^5.1.0",
     "lucide-react": "^0.562.0",
     "react": "^19.2.0",
