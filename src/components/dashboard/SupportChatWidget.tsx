@@ -4,8 +4,13 @@ import { supabase } from '../../lib/supabase';
 import { useSupportChat } from '../../hooks/useSupportChat';
 import EmojiPicker, { type EmojiClickData, Theme } from 'emoji-picker-react';
 
-export default function SupportChatWidget({ userId }: { userId: string }) {
-  const [isOpen, setIsOpen] = useState(false);
+interface Props {
+    userId: string;
+    mode?: 'floating' | 'inline'; // 👈 NEW PROP
+}
+
+export default function SupportChatWidget({ userId, mode = 'floating' }: Props) {
+  const [isOpen, setIsOpen] = useState(false); // Only used for floating mode
   const [leadId, setLeadId] = useState<string | null>(null);
   const [input, setInput] = useState('');
   
@@ -42,18 +47,22 @@ export default function SupportChatWidget({ userId }: { userId: string }) {
 
     const channel = supabase.channel('client-widget-badge')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'support_messages' }, (payload) => {
-            if (payload.new.sender_id !== userId && !isOpen) {
-                setUnreadCount(prev => prev + 1);
+            if (payload.new.sender_id !== userId) {
+                // If floating and closed, OR if inline (header handles its own badge usually, but we update count anyway)
+                if (mode === 'floating' && !isOpen) {
+                    setUnreadCount(prev => prev + 1);
+                }
             }
         })
         .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [userId, isOpen]);
+  }, [userId, isOpen, mode]);
 
   // 3. Fetch Unread Count
   const fetchUnread = async (id: string) => {
-      if (isOpen) return;
+      if (mode === 'floating' && isOpen) return; 
+      
       const { count } = await supabase
         .from('support_messages')
         .select('id', { count: 'exact', head: true })
@@ -66,7 +75,10 @@ export default function SupportChatWidget({ userId }: { userId: string }) {
 
   // 4. Auto-Scroll & Clear Badge
   useEffect(() => {
-    if (isOpen && leadId) {
+    // If inline, it's always "open" effectively when rendered
+    const isVisible = mode === 'inline' || (mode === 'floating' && isOpen);
+
+    if (isVisible && leadId) {
         setUnreadCount(0);
         supabase.from('support_messages')
             .update({ is_read: true })
@@ -78,10 +90,9 @@ export default function SupportChatWidget({ userId }: { userId: string }) {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, isOpen, leadId, userId]);
+  }, [messages, isOpen, leadId, userId, mode]);
 
   // --- ACTIONS ---
-
   const handleSend = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (isSendingRef.current) return;
@@ -146,24 +157,23 @@ export default function SupportChatWidget({ userId }: { userId: string }) {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  if (!leadId) return null;
+  if (!leadId) return mode === 'inline' ? <div className="p-4 text-xs text-red-500">Connecting...</div> : null;
 
-  return (
-    <div className="fixed bottom-6 right-6 z-[9999] flex flex-col items-end gap-2">
-      
-      {/* WINDOW */}
-      {isOpen && (
-        <div className="mb-2 w-80 h-[500px] bg-[#1e293b] border border-[#334155] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 fade-in duration-200">
+  // --- RENDER CONTENT (Shared between modes) ---
+  const chatWindow = (
+    <div className={`${mode === 'floating' ? 'mb-2 w-80 h-[500px] border border-[#334155] rounded-2xl shadow-2xl animate-in slide-in-from-bottom-5 fade-in duration-200' : 'w-80 h-[500px] border-l border-b border-r border-[#334155] rounded-b-2xl shadow-xl'} bg-[#1e293b] flex flex-col overflow-hidden`}>
           
           {/* Header */}
-          <div className="bg-[#21ce99] p-4 flex items-center justify-between shadow-md shrink-0">
+          <div className="bg-[#21ce99] p-3 flex items-center justify-between shadow-md shrink-0">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
-              <span className="font-bold text-[#0b0e11] text-sm">Live Support</span>
+              <span className="font-bold text-[#0b0e11] text-xs">Live Support</span>
             </div>
-            <button onClick={() => setIsOpen(false)} className="text-[#0b0e11]/70 hover:text-black transition">
-              <X size={16} />
-            </button>
+            {mode === 'floating' && (
+                <button onClick={() => setIsOpen(false)} className="text-[#0b0e11]/70 hover:text-black transition">
+                    <X size={16} />
+                </button>
+            )}
           </div>
 
           {/* Messages */}
@@ -187,7 +197,6 @@ export default function SupportChatWidget({ userId }: { userId: string }) {
 
               return (
                 <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                  {/* FIXED CSS: Added overflow-hidden and break-words */}
                   <div className={`max-w-[85%] px-3 py-2 rounded-xl text-xs font-medium shadow-sm break-words overflow-hidden ${
                     isMe 
                       ? 'bg-[#21ce99] text-[#0b0e11] rounded-br-none' 
@@ -203,7 +212,6 @@ export default function SupportChatWidget({ userId }: { userId: string }) {
                             className="max-w-full rounded-md cursor-zoom-in border border-black/10" 
                         />
                     ) : (
-                        // FIXED CSS: break-words
                         <p className="whitespace-pre-wrap break-words">{msg.message_text}</p>
                     )}
                   </div>
@@ -276,10 +284,34 @@ export default function SupportChatWidget({ userId }: { userId: string }) {
               {sending || uploading ? <Loader2 size={14} className="animate-spin"/> : <Send size={14} />}
             </button>
           </form>
-        </div>
-      )}
+    </div>
+  );
 
-      {/* BUTTON */}
+  // --- RETURN LOGIC ---
+
+  // 1. INLINE MODE (For Header) - Just the window
+  if (mode === 'inline') {
+      return (
+        <>
+            {chatWindow}
+            {/* Lightbox for Inline */}
+            {fullScreenImage && (
+                <div className="fixed inset-0 z-[10000] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setFullScreenImage(null)}>
+                    <button onClick={() => setFullScreenImage(null)} className="absolute top-6 right-6 text-white/70 hover:text-white bg-black/50 rounded-full p-2 transition"><X size={32} /></button>
+                    <img src={fullScreenImage} alt="Full Size" className="max-w-full max-h-full rounded-md shadow-2xl animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()} />
+                </div>
+            )}
+        </>
+      );
+  }
+
+  // 2. FLOATING MODE (For Dashboard) - Button + Window
+  return (
+    <div className="fixed bottom-6 right-6 z-[9999] flex flex-col items-end gap-2">
+      
+      {isOpen && chatWindow}
+
+      {/* FLOAT BUTTON */}
       <div className="relative flex flex-col items-center gap-1">
           {!isOpen && unreadCount > 0 && (
               <div className="absolute -top-1 -right-1 z-50 w-5 h-5 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-[#0b0e11] animate-bounce">
@@ -301,7 +333,7 @@ export default function SupportChatWidget({ userId }: { userId: string }) {
           </button>
       </div>
 
-      {/* LIGHTBOX */}
+      {/* Lightbox for Floating */}
       {fullScreenImage && (
           <div className="fixed inset-0 z-[10000] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setFullScreenImage(null)}>
               <button onClick={() => setFullScreenImage(null)} className="absolute top-6 right-6 text-white/70 hover:text-white bg-black/50 rounded-full p-2 transition"><X size={32} /></button>

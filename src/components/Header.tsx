@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { User, ChevronDown, LayoutGrid, Briefcase, Check, TrendingUp, Wallet, ShieldAlert } from 'lucide-react';
+import { User, ChevronDown, LayoutGrid, Briefcase, Check, TrendingUp, Wallet, ShieldAlert, Headphones } from 'lucide-react';
 import { useClickSound } from '../hooks/useClickSound';
+import SupportChatWidget from './dashboard/SupportChatWidget'; // IMPORT WIDGET
 
 interface HeaderProps {
   activeAsset: { 
@@ -15,7 +16,8 @@ interface HeaderProps {
   monitoredUserName?: string;
   onOpenAssetSelector: () => void;
   onOpenDashboardPopup: () => void; 
-  onOpenProfilePage: () => void;    
+  onOpenProfilePage: () => void;
+  userId: string; // NEED USER ID FOR CHAT
 }
 
 export default function Header({ 
@@ -27,11 +29,13 @@ export default function Header({
   monitoredUserName = '',
   onOpenAssetSelector, 
   onOpenDashboardPopup, 
-  onOpenProfilePage 
+  onOpenProfilePage,
+  userId // NEW PROP
 }: HeaderProps) {
   
   const playClick = useClickSound();
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false); // CHAT STATE
 
   return (
     <header className={`h-14 md:h-16 border-b flex items-center justify-between px-4 md:px-6 backdrop-blur-md z-50 relative shadow-[0_4px_20px_rgba(0,0,0,0.5)] font-sans transition-colors duration-300 ${
@@ -73,7 +77,7 @@ export default function Header({
               <ChevronDown size={14} className="text-[#5e6673] group-hover:text-[#21ce99] transition-colors" />
             </button>
 
-            {/* ✅ RESTORED: ACCOUNT SWITCHER (ALWAYS VISIBLE NOW) */}
+            {/* ACCOUNT SWITCHER */}
             {activeAccountName && (
                 <div className="relative">
                     <button 
@@ -111,12 +115,10 @@ export default function Header({
                                             key={acc.id}
                                             onClick={() => {
                                                 playClick();
-                                                // Keep the God Mode param if it exists!
                                                 const currentUrl = new URL(window.location.href);
                                                 currentUrl.searchParams.set('mode', 'trading');
                                                 currentUrl.searchParams.set('account_id', acc.id);
                                                 window.location.href = currentUrl.toString();
-                                                
                                                 setIsAccountMenuOpen(false);
                                             }}
                                             className="w-full flex items-center justify-between px-3 py-3 hover:bg-[#21ce99]/10 rounded-lg transition-all text-left group border border-transparent hover:border-[#21ce99]/20 mb-1"
@@ -140,7 +142,7 @@ export default function Header({
       {/* 2. RIGHT SIDE: BALANCE & TOOLS */}
       <div className="flex items-center gap-3 md:gap-4">
         
-        {/* 🔴 MOVED HERE: CLIENT NAME DISPLAY */}
+        {/* CLIENT NAME DISPLAY (GOD MODE) */}
         {isGodMode && (
             <div className="hidden lg:flex items-center gap-3 border border-red-500/50 bg-red-500/10 rounded-xl px-3 py-1.5 shadow-[0_0_15px_rgba(239,68,68,0.2)] mr-2">
                 <div className="p-1.5 rounded-lg bg-red-500 text-white">
@@ -154,7 +156,7 @@ export default function Header({
         )}
 
         {/* BALANCE DISPLAY */}
-        <div className="bg-[#0b0e11] pl-3 pr-4 py-1.5 rounded-xl border border-white/10 shadow-inner flex items-center gap-3 group hover:border-[#21ce99]/30 transition-colors">
+        <div className="hidden md:flex bg-[#0b0e11] pl-3 pr-4 py-1.5 rounded-xl border border-white/10 shadow-inner items-center gap-3 group hover:border-[#21ce99]/30 transition-colors">
           <div className="w-8 h-8 rounded-lg bg-[#1e232d] flex items-center justify-center text-[#21ce99] group-hover:scale-110 transition-transform">
              <Wallet size={16} />
           </div>
@@ -167,6 +169,28 @@ export default function Header({
         </div>
 
         <div className="h-8 w-[1px] bg-white/10 hidden md:block"></div>
+
+        {/* --- SUPPORT BUTTON (NEW) --- */}
+        <div className="relative">
+            <button 
+                onClick={() => setIsChatOpen(!isChatOpen)}
+                className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all cursor-pointer shadow-lg group ${
+                    isChatOpen 
+                    ? 'bg-[#21ce99] border-[#21ce99] text-[#0b0e11]' 
+                    : 'bg-[#1e232d] border-white/10 hover:bg-[#21ce99] hover:text-[#0b0e11] hover:border-[#21ce99]'
+                }`}
+                title="Support"
+            >
+                <Headphones size={18} className={isChatOpen ? 'text-[#0b0e11]' : 'text-gray-400 group-hover:text-[#0b0e11]'} />
+            </button>
+            
+            {/* THE DROPDOWN CHAT WIDGET */}
+            {isChatOpen && (
+                <div className="absolute top-12 right-0 z-50 animate-in slide-in-from-top-5 fade-in duration-200">
+                    <SupportChatWidget userId={userId} mode="inline" />
+                </div>
+            )}
+        </div>
 
         {/* DASHBOARD BUTTON */}
         <button 

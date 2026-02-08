@@ -579,6 +579,7 @@ export default function App() {
         userAccounts={userAccounts} 
         isGodMode={isGodMode}
         monitoredUserName={monitoredUserName}
+        userId={session?.user?.id}
         onOpenAssetSelector={() => setIsAssetSelectorOpen(true)} 
         onOpenDashboardPopup={() => {
             window.history.pushState({}, '', window.location.origin);
@@ -635,8 +636,6 @@ export default function App() {
         onCloseOrder={handleCloseOrder} 
         lastOrderTime={lastOrderTime} 
       />
-      {/* Support Chat Widget */}
-      {session?.user && <SupportChatWidget userId={session.user.id} />}
     </div>
   )
 }
