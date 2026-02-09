@@ -52,10 +52,11 @@ Deno.serve(async (req) => {
 
       const margin = size / leverage;
 
-      // 2. CHECK ACCOUNT BALANCE
+      // 2. CHECK ACCOUNT BALANCE & OWNER
+      // 🟢 FIX 1: We fetch 'user_id' too so we know who owns the wallet
       const { data: account } = await supabase
         .from('trading_accounts')
-        .select('balance')
+        .select('balance, user_id') 
         .eq('id', account_id)
         .single();
       
@@ -75,7 +76,7 @@ Deno.serve(async (req) => {
 
       // Save 'is_god_mode' to database (defaulting to false)
       const { data: trade, error } = await supabase.from('trades').insert([{
-        user_id: user.id, // Note: This saves the Creator (Staff), but that's okay now because of the fix below
+        user_id: account.user_id, // 🟢 CHANGED: Now using the Client's ID
         account_id,
         symbol,
         type,

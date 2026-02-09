@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import { 
     History, 
     ArrowUpRight, 
@@ -12,7 +12,8 @@ import {
     ShieldCheck, 
     Globe,       
     Server,
-    ArrowRightLeft // Added for Transfers
+    ArrowRightLeft,
+    ShieldAlert
 } from 'lucide-react';
 
 interface Props {
@@ -21,7 +22,7 @@ interface Props {
 
 export default function TransactionHistory({ transactions }: Props) {
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 15; // Set to 15 as requested
+  const itemsPerPage = 15;
 
   // Pagination Logic
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -34,8 +35,7 @@ export default function TransactionHistory({ transactions }: Props) {
 
   // --- HELPER: GET CORRECT LABELS & ICONS ---
   const getTxConfig = (tx: any) => {
-      // 1. INTERNAL TRANSFER (Blue)
-      // Checks for 'transfer' type OR the arrow '->' in the description
+      // 1. INTERNAL TRANSFER
       const isTransfer = tx.type === 'transfer' || (tx.method && tx.method.includes('->'));
       
       if (isTransfer) {
@@ -51,7 +51,7 @@ export default function TransactionHistory({ transactions }: Props) {
           };
       }
 
-      // 2. BONUS (Gold)
+      // 2. BONUS
       if (tx.type === 'bonus') {
           return {
               label: 'PERFORMANCE BONUS',
@@ -65,8 +65,7 @@ export default function TransactionHistory({ transactions }: Props) {
           };
       }
 
-      // 3. EXTERNAL DEPOSIT / WITHDRAWAL (Green/Red)
-      // Catches standard 'deposit'/'withdrawal' (from buttons) AND 'external_' types
+      // 3. EXTERNAL DEPOSIT / WITHDRAWAL
       if (['deposit', 'withdrawal', 'external_deposit', 'external_withdraw'].includes(tx.type)) {
           const isIn = tx.type.includes('deposit');
           return {
@@ -81,7 +80,21 @@ export default function TransactionHistory({ transactions }: Props) {
           };
       }
 
-      // 4. DEFAULT SYSTEM (Gray)
+      // 3.5. HOLD
+      if (tx.status === 'on_hold') {
+          return {
+              label: 'TRANSACTION ON HOLD',
+              subLabel: 'ACTION REQUIRED',
+              icon: <ShieldAlert size={14} />,
+              color: 'text-orange-400',
+              bg: 'bg-orange-400/10',
+              border: 'border-orange-400/20',
+              channelIcon: <Server size={12} />,
+              channelName: 'COMPLIANCE'
+          };
+      }
+
+      // 4. DEFAULT SYSTEM
       return {
           label: 'SYSTEM ADJUSTMENT',
           subLabel: 'AUTOMATED',
@@ -125,35 +138,35 @@ export default function TransactionHistory({ transactions }: Props) {
                ) : (
                  currentTransactions.map(tx => {
                    const config = getTxConfig(tx);
-                   // Priority: Use DB text (e.g., "Main -> Unit 1") if available, else default
                    const displayMethod = tx.method || config.channelName || 'System'; 
                    
                    return (
-                    <tr key={tx.id} className="hover:bg-white/[0.02] transition-colors group">
+                    <Fragment key={tx.id}>
+                    <tr className="hover:bg-white/[0.02] transition-colors group">
                       
                       {/* 1. EVENT TYPE */}
                       <td className="px-6 py-4">
-                         <div className="flex items-center gap-3">
-                            <div className={`h-9 w-9 rounded-lg flex items-center justify-center border ${config.bg} ${config.border} ${config.color}`}>
-                              {config.icon}
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="font-black uppercase text-white text-[11px] tracking-wide group-hover:text-[#21ce99] transition-colors">
-                                    {config.label}
-                                </span>
-                                <span className="text-[9px] text-gray-600 font-mono uppercase">
-                                    {config.subLabel}
-                                </span>
-                            </div>
-                         </div>
+                          <div className="flex items-center gap-3">
+                             <div className={`h-9 w-9 rounded-lg flex items-center justify-center border ${config.bg} ${config.border} ${config.color}`}>
+                               {config.icon}
+                             </div>
+                             <div className="flex flex-col">
+                                 <span className="font-black uppercase text-white text-[11px] tracking-wide group-hover:text-[#21ce99] transition-colors">
+                                     {config.label}
+                                 </span>
+                                 <span className="text-[9px] text-gray-600 font-mono uppercase">
+                                     {config.subLabel}
+                                 </span>
+                             </div>
+                          </div>
                       </td>
 
                       {/* 2. CHANNEL / METHOD */}
                       <td className="px-6 py-4">
-                         <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 bg-white/5 px-3 py-1.5 rounded-lg w-fit border border-white/5">
+                          <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 bg-white/5 px-3 py-1.5 rounded-lg w-fit border border-white/5">
                              {config.channelIcon}
                              <span className="uppercase tracking-wider">{displayMethod}</span>
-                         </div>
+                          </div>
                       </td>
 
                       {/* 3. AMOUNT */}
@@ -167,12 +180,14 @@ export default function TransactionHistory({ transactions }: Props) {
                         <span className={`px-2 py-1 rounded-[6px] text-[9px] font-black uppercase inline-flex items-center gap-1.5 border ${
                           tx.status === 'approved' ? 'bg-[#21ce99]/10 text-[#21ce99] border-[#21ce99]/20' :
                           tx.status === 'rejected' ? 'bg-[#f23645]/10 text-[#f23645] border-[#f23645]/20' :
+                          tx.status === 'on_hold' ? 'bg-orange-400/10 text-orange-400 border-orange-400/20' :
                           'bg-[#F0B90B]/10 text-[#F0B90B] border-[#F0B90B]/20'
                         }`}>
                           {tx.status === 'approved' && <CheckCircle size={10} />}
                           {tx.status === 'rejected' && <XCircle size={10} />}
+                          {tx.status === 'on_hold' && <ShieldAlert size={10} />}
                           {tx.status === 'pending' && <Clock size={10} />}
-                          {tx.status === 'pending' ? 'PROCESSING' : 'COMPLETED'}
+                          {tx.status === 'pending' ? 'PROCESSING' : tx.status === 'on_hold' ? 'ON HOLD' : tx.status.toUpperCase()}
                         </span>
                       </td>
 
@@ -185,7 +200,24 @@ export default function TransactionHistory({ transactions }: Props) {
                       </td>
 
                     </tr>
-                   )})
+
+                    {/* 🟢 COMMENT ROW - CHANGED TEXT HERE */}
+                    {tx.admin_comment && (
+                        <tr className="bg-white/[0.01]">
+                            <td colSpan={5} className="px-6 py-2 border-b border-white/5">
+                                <div className="flex items-start gap-2 text-[10px] text-gray-400 bg-white/5 p-2 rounded-lg border border-white/5 mx-10">
+                                    <div className="mt-0.5 text-orange-400"><ShieldAlert size={12} /></div>
+                                    <div>
+                                        <span className="font-bold text-gray-300 uppercase tracking-wider mr-2">Financial Team:</span>
+                                        <span className="font-mono">{tx.admin_comment}</span>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    )}
+                   </Fragment>
+                   )
+                 })
                )}
              </tbody>
            </table>

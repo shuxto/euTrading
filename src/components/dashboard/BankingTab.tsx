@@ -66,7 +66,7 @@ export default function BankingTab() {
   };
 
   // --- EXTERNAL REQUEST ---
-  const handleExternalRequest = async () => {
+  const handleExternalRequest = async (methodInfo?: string) => {
       const val = parseFloat(amount);
       if (!val || val <= 0) return;
       
@@ -83,12 +83,14 @@ export default function BankingTab() {
               user_id: user.id,
               type: activeSection,
               amount: val,
-              status: 'pending'
+              status: 'pending',
+              method: methodInfo || 'Standard Request'
           });
 
           if (!error) {
             setAmount('');
-            setActiveSection('transfer');
+            // Note: We removed setActiveSection('transfer') here so the Success Popup can show.
+            // The popup close button will handle the reset.
             fetchData();
           }
       }
