@@ -1,4 +1,4 @@
-// scripts/broadcaster.js (The "Smart Executioner" - FIXED & DEBUGGED)
+// scripts/broadcaster.js (The "Smart Executioner" - FINAL CLEAN VERSION)
 import { createServer } from "http";
 import { Server } from "socket.io";
 import WebSocket from 'ws';
@@ -31,25 +31,30 @@ const io = new Server(httpServer, {
 // --- 🧠 MEMORY STORAGE ---
 let activeTrades = new Map(); 
 
-// 104 Assets
+// ✅ CLEAN SYMBOLS LIST (No broken assets)
 const SYMBOLS = [
-    // CRYPTO
+    // 1. CRYPTO (34) - Replaced MATIC with POL, Removed EOS
     "BTC/USD", "ETH/USD", "SOL/USD", "BNB/USD", "XRP/USD", "ADA/USD", "DOGE/USD", 
-    "AVAX/USD", "DOT/USD", "LINK/USD", "MATIC/USD", "LTC/USD", "UNI/USD", "TRX/USD", 
+    "AVAX/USD", "DOT/USD", "LINK/USD", "POL/USD", "LTC/USD", "UNI/USD", "TRX/USD", 
     "SHIB/USD", "ETC/USD", "NEAR/USD", "ATOM/USD", "XLM/USD", "BCH/USD", "ALGO/USD", 
     "FIL/USD", "VET/USD", "ICP/USD", "GRT/USD", "AAVE/USD", "SAND/USD", "MANA/USD", 
-    "AXS/USD", "EOS/USD", "THETA/USD", "RUNE/USD", "KSM/USD", "EGLD/USD", "XTZ/USD",
-    // STOCKS
+    "AXS/USD", "THETA/USD", "RUNE/USD", "KSM/USD", "EGLD/USD", "XTZ/USD",
+
+    // 2. STOCKS (30)
     "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "NFLX", "AMD", "INTC", 
     "CRM", "ADBE", "PYPL", "UBER", "ABNB", "COIN", "PLTR", "JPM", "V", "MA", "WMT", 
     "KO", "PEP", "MCD", "NKE", "TSM", "ASML", "BABA", "SONY", "TM",
-    // FOREX
+
+    // 3. FOREX (22)
     "EUR/USD", "GBP/USD", "USD/JPY", "USD/CHF", "AUD/USD", "USD/CAD", "NZD/USD", 
     "EUR/GBP", "EUR/JPY", "EUR/CHF", "GBP/JPY", "GBP/AUD", "GBP/CAD", "AUD/JPY", 
     "AUD/CAD", "CAD/JPY", "CHF/JPY", "USD/SGD", "USD/HKD", "USD/ZAR", "USD/MXN", "USD/TRY",
-    // INDICES & COMMODITIES
+
+    // 4. SMART INDICES / ETFs (5)
     "SPY", "QQQ", "DIA", "DAX", "EWU",
-    "XAU/USD", "XAG/USD", "XPT/USD", "XPD/USD", "XCU/USD", "WTI", "BRENT", "NG", 
+
+    // 5. COMMODITIES (11) - Removed XCU/USD
+    "XAU/USD", "XAG/USD", "XPT/USD", "XPD/USD", "WTI", "BRENT", "NG", 
     "CORN", "WEAT", "SOYB", "CANE"
 ];
 
