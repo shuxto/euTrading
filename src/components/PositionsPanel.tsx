@@ -2,18 +2,21 @@ import { useState, useEffect } from "react";
 import { ChevronUp, ChevronDown, X, Clock, AlertCircle } from "lucide-react"; 
 import { motion } from "framer-motion";
 import { useClock } from '../hooks/useClock';
+import { useSocket } from '../context/SocketContext'; // 👈 NEW
 import type { Order } from "../types";
 
 interface PositionsPanelProps {
   orders: Order[];
   history: Order[]; 
   currentPrice: number | null; // Keep for the header status only
-  marketPrices: Record<string, number>; // 👈 NEW: Real prices for all symbols
+  // marketPrices: Record<string, number>; // 👈 REMOVED
   onCloseOrder: (id: number) => void;
   lastOrderTime?: number;
 }
 
-export default function PositionsPanel({ orders, history, currentPrice, marketPrices, onCloseOrder, lastOrderTime }: PositionsPanelProps) {
+export default function PositionsPanel({ orders, history, currentPrice, onCloseOrder, lastOrderTime }: PositionsPanelProps) {
+  const { marketPrices } = useSocket(); // 👈 CONSUME CONTEXT
+
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'positions' | 'open' | 'history'>('positions');
   const currentTime = useClock();

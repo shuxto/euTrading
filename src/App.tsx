@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase'
-import { io } from "socket.io-client"; // 👈 NEW IMPORT
+// import { io } from "socket.io-client"; // REMOVED
 
 // COMPONENTS
 import LoginPage from './components/LoginPage'
@@ -21,7 +21,7 @@ import SupportChatWidget from './components/dashboard/SupportChatWidget'
 import { type Order, type ActiveAsset, type ChartStyle, type TradingAccount } from './types'
 
 // ⚠️ GLOBAL SOCKET URL
-const RAILWAY_URL = "https://trading-copy-production.up.railway.app"; 
+// const RAILWAY_URL = "https://trading-copy-production.up.railway.app"; // MOVED TO CONTEXT 
 
 // ✅ DEFAULT ASSET FALLBACK (Now with type!)
 const DEFAULT_ASSET: ActiveAsset & { type: string } = { 
@@ -82,25 +82,15 @@ export default function App() {
   // ------------------------------------------------------------
   
   // 1. Store prices for ALL symbols here
-  const [marketPrices, setMarketPrices] = useState<Record<string, number>>({});
+  // REMOVED: Managed by SocketContext now
+  // const [marketPrices, setMarketPrices] = useState<Record<string, number>>({});
 
   // 2. Listen to Railway for ALL price updates
-  useEffect(() => {
+  // REMOVED: Managed by SocketContext
+  /* useEffect(() => {
     const socket = io(RAILWAY_URL);
-
-    socket.on('price_update', (update: any) => {
-        if (update && update.symbol && update.price) {
-            setMarketPrices(prev => ({
-                ...prev,
-                [update.symbol]: parseFloat(update.price)
-            }));
-        }
-    });
-
-    return () => {
-        socket.disconnect();
-    };
-  }, []); // Run once on mount
+    ...
+  }, []); */
 
   // ------------------------------------------------------------
   // ✅ FIX END
@@ -500,49 +490,14 @@ export default function App() {
 
   // ✅ 4. AUTO-CLOSE ENGINE (FIXED & SAFER)
   // Now uses 'marketPrices' instead of 'currentPrice'
-  /*const closingRef = useRef<Set<number>>(new Set());
-
-  useEffect(() => {
-    if (orders.length === 0) return;
-
-    orders.forEach(order => {
-        if (order.status !== 'active') return;
-        if (closingRef.current.has(order.id)) return; 
-
-        // 🟢 THE FIX: Lookup the price for THIS SPECIFIC ORDER'S SYMBOL
-        const livePrice = marketPrices[order.symbol]; 
-        
-        // If we don't have a price for this coin yet, skip it safely
-        if (!livePrice) return; 
-
-        let shouldClose = false;
-        let reason = '';
-
-        if (order.leverage > 1) { 
-            if (order.type === 'buy' && livePrice <= order.liquidationPrice) { shouldClose = true; reason = 'LIQUIDATION'; }
-            if (order.type === 'sell' && livePrice >= order.liquidationPrice) { shouldClose = true; reason = 'LIQUIDATION'; }
-        }
-
-        if (order.takeProfit) {
-            if (order.type === 'buy' && livePrice >= order.takeProfit) { shouldClose = true; reason = 'TAKE PROFIT'; }
-            if (order.type === 'sell' && livePrice <= order.takeProfit) { shouldClose = true; reason = 'TAKE PROFIT'; }
-        }
-
-        if (order.stopLoss) {
-            if (order.type === 'buy' && livePrice <= order.stopLoss) { shouldClose = true; reason = 'STOP LOSS'; }
-            if (order.type === 'sell' && livePrice >= order.stopLoss) { shouldClose = true; reason = 'STOP LOSS'; }
-        }
-
-      if (shouldClose) {
-        console.log(`Closing trade #${order.id} (${order.symbol}) Reason: ${reason} Price: ${livePrice}`); 
-
-        closingRef.current.add(order.id); 
-        handleCloseOrder(order.id).finally(() => {
-            closingRef.current.delete(order.id);
-        });
-      }
-    });
-  }, [marketPrices, orders]); // 👈 Depends on marketPrices now*/
+  /* 
+  // 4. AUTO-CLOSE ENGINE
+  // MOVED TO BROADCASTER / BACKEND
+  // const closingRef = useRef<Set<number>>(new Set());
+  // ...
+  // orders.forEach(order => { ... });
+  // }, [marketPrices, orders]); 
+  */
 
 
   // --- 5. RENDER ---
@@ -628,11 +583,11 @@ export default function App() {
         />
       </div>
       
-      <PositionsPanel 
+        <PositionsPanel 
         orders={orders} 
         history={history} 
         currentPrice={currentPrice} 
-        marketPrices={marketPrices} // 👈 PASSING THE GLOBAL PRICES
+        // marketPrices={marketPrices} // 👈 REMOVED: Uses Context now
         onCloseOrder={handleCloseOrder} 
         lastOrderTime={lastOrderTime} 
       />
